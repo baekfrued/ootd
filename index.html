@@ -372,7 +372,7 @@
           <input
             type="text"
             id="item-modal-name"
-            placeholder="例如：阿迪黑色外套、UR黑色弯刀裤"
+            placeholder="例如：黑色外套、黑色牛仔裤"
             class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
           />
         </div>
@@ -432,12 +432,10 @@
 
     const DEFAULT_CATEGORIES = [
       { id: 'cat_outer', name: '外套' },
-      { id: 'cat_cardigan', name: '开衫' },
-      { id: 'cat_sweater', name: '毛衣' },
       { id: 'cat_inner', name: '内搭' },
       { id: 'cat_pants', name: '裤子' },
       { id: 'cat_shoes', name: '鞋子' },
-      { id: 'cat_bag', name: '包' }
+      { id: 'cat_bag', name: '包包' }
     ];
 
     // 旧版内置演示单品名称名单（用于自动清理残留演示数据，不影响用户自建单品）
@@ -801,7 +799,7 @@
             <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-3">
               <i class="fa-regular fa-face-meh text-xl"></i>
             </div>
-            <p class="text-sm font-bold text-slate-800 mb-1">暂时没有这个穿搭或这样不好看哦</p>
+            <p class="text-sm font-bold text-slate-800 mb-1">暂时没有找到/这样不好看哦</p>
             <p class="text-xs text-slate-400 mb-4">你可以换个单品组合试试，或者上传这套新搭配</p>
             <button
               onclick="openOutfitModalWithSelected()"
