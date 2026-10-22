@@ -30,7 +30,7 @@
 </head>
 <body class="min-h-screen select-none">
 
-  <!-- 顶部导航栏 (微信小程序风格) -->
+  <!-- 顶部导航栏 -->
   <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2.5">
       <div class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
@@ -44,7 +44,6 @@
         <i id="cloud-status-icon" class="fa-solid fa-cloud-arrow-up"></i>
         <span id="cloud-status-text">云端同步</span>
       </button>
-      <!-- 模拟小程序胶囊按钮 -->
       <div class="flex items-center border border-slate-200 rounded-full px-2.5 py-1 bg-white/80 gap-2.5 text-slate-700">
         <button onclick="openCategoryModal()" title="管理分类" class="text-xs active:opacity-60">
           <i class="fa-solid fa-tags"></i>
@@ -133,7 +132,6 @@
           <span id="result-filter-hint" class="text-xs text-slate-400">当前展示全部穿搭</span>
         </div>
 
-        <!-- 结果网格 -->
         <div id="outfits-grid" class="grid grid-cols-2 gap-3"></div>
       </div>
     </section>
@@ -155,7 +153,6 @@
           </div>
         </div>
 
-        <!-- 衣橱搜索 -->
         <div class="relative mb-3">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
           <input
@@ -167,10 +164,7 @@
           />
         </div>
 
-        <!-- 衣橱分类切换 -->
         <div id="closet-category-tabs" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-2 border-b border-slate-100"></div>
-
-        <!-- 衣橱单品列表 -->
         <div id="closet-items-list" class="mt-3 space-y-2"></div>
       </div>
     </section>
@@ -213,7 +207,6 @@
       </div>
 
       <div class="p-4 overflow-y-auto space-y-4 flex-1">
-        <!-- 照片上传 -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-2">1. 穿搭照片</label>
           <input type="file" id="outfit-file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)" />
@@ -239,13 +232,11 @@
           </div>
         </div>
 
-        <!-- 适用温度（支持多选） -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-2">2. 适合温度（可多选，点击切换勾选）</label>
           <div id="modal-temp-options" class="flex flex-wrap gap-2"></div>
         </div>
 
-        <!-- 关联单品 + 快速新建单品 -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs font-bold text-slate-700">3. 包含哪些衣服单品（可多选）</label>
@@ -259,7 +250,6 @@
             </button>
           </div>
 
-          <!-- 弹窗内快速新建单品面板 -->
           <div id="quick-add-item-box" class="hidden mb-3 p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 space-y-2.5">
             <div class="text-xs font-bold text-indigo-900">快速添加新单品到衣橱</div>
             <div class="flex gap-2">
@@ -277,7 +267,6 @@
             </div>
           </div>
 
-          <!-- 弹窗内单品搜索 -->
           <div class="relative mb-2">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input
@@ -292,7 +281,6 @@
           <div id="modal-items-selector" class="max-h-48 overflow-y-auto space-y-2.5 p-1"></div>
         </div>
 
-        <!-- 备注（选填） -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1.5">4. 穿搭名称 / 备注（选填）</label>
           <input
@@ -399,12 +387,15 @@
         <div class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-100 text-xs text-emerald-800 space-y-1">
           <div class="font-bold flex items-center gap-1.5">
             <i class="fa-solid fa-circle-check text-emerald-600"></i>
-            <span>已连接 Supabase 私人云数据库</span>
+            <span>Supabase 云端分块同步模式</span>
           </div>
           <p class="text-[11px] text-emerald-700 leading-relaxed">
-            你在微信、浏览器上传的穿搭会自动同步到云端，清缓存或换手机都不会丢失。
+            每套穿搭独立秒传云端，微信与浏览器实时互通。
           </p>
         </div>
+
+        <!-- 错误诊断框 -->
+        <div id="cloud-error-box" class="hidden p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 leading-relaxed break-all"></div>
 
         <div class="grid grid-cols-2 gap-2">
           <button
@@ -445,20 +436,29 @@
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-full bg-slate-900/90 text-white text-xs font-medium shadow-lg backdrop-blur-xs"></div>
 
   <script>
-    // ==================== SUPABASE 云端配置（已填好你的专属地址和密钥） ====================
+    // ==================== SUPABASE 云端配置 ====================
     const SUPABASE_URL = "https://lzryhgfguriokuboujfx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_6L1TvbqBJKEXRYMEuuQwgA_BvP7BEOK".replace(/^Sb_publishable_/, "sb_publishable_");
-    const CLOUD_ROW_ID = "main";
+    const SUPABASE_KEY = "sb_publishable_6L1TvbqBJKEXRYMEuuQwgA_BvP7BEOK".trim();
+    let lastCloudError = "";
 
     function getSupabaseHeaders() {
-      const headers = {
+      return {
         "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
         "Content-Type": "application/json"
       };
-      if (SUPABASE_KEY.startsWith("eyJ")) {
-        headers["Authorization"] = `Bearer ${SUPABASE_KEY}`;
+    }
+
+    function setCloudError(msg) {
+      lastCloudError = msg || "";
+      const box = document.getElementById("cloud-error-box");
+      if (!box) return;
+      if (lastCloudError) {
+        box.textContent = "诊断提示：" + lastCloudError;
+        box.classList.remove("hidden");
+      } else {
+        box.classList.add("hidden");
       }
-      return headers;
     }
 
     function updateCloudBadge(status, text) {
@@ -474,44 +474,122 @@
       } else if (status === "ok") {
         btn.className = "px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium flex items-center gap-1.5";
         icon.className = "fa-solid fa-cloud-check";
+        setCloudError("");
       } else {
         btn.className = "px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 text-xs font-medium flex items-center gap-1.5";
         icon.className = "fa-solid fa-cloud-bolt";
       }
     }
 
-    async function fetchFromCloud() {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?id=eq.${CLOUD_ROW_ID}&select=data,updated_at`, {
-        method: "GET",
-        headers: getSupabaseHeaders(),
-        cache: "no-store"
-      });
-      if (!res.ok) throw new Error("Cloud fetch failed: " + res.status);
-      const rows = await res.json();
-      return rows && rows.length > 0 ? rows[0] : null;
-    }
-
-    async function pushToCloud() {
-      updateCloudBadge("syncing", "同步中...");
-      const payload = {
-        categories: state.categories,
-        items: state.items,
-        outfits: state.outfits,
-        updatedAt: Date.now()
-      };
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync`, {
+    // 单行上传（分块同步，避免多图打包超时）
+    async function upsertCloudRow(rowId, payloadData) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?on_conflict=id`, {
         method: "POST",
         headers: {
           ...getSupabaseHeaders(),
           "Prefer": "resolution=merge-duplicates,return=minimal"
         },
         body: JSON.stringify({
-          id: CLOUD_ROW_ID,
-          data: payload,
+          id: rowId,
+          data: payloadData,
           updated_at: new Date().toISOString()
         })
       });
-      if (!res.ok) throw new Error("Cloud push failed: " + res.status);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        if (res.status === 404 || errText.includes("42P01") || errText.includes("ootd_sync")) {
+          throw new Error("Supabase里还没建好 ootd_sync 表，请先去 SQL Editor 运行建表语句 (状态码 " + res.status + ")");
+        }
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 120)}`);
+      }
+    }
+
+    async function deleteCloudRow(rowId) {
+      await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?id=eq.${encodeURIComponent(rowId)}`, {
+        method: "DELETE",
+        headers: getSupabaseHeaders()
+      });
+    }
+
+    // 拉取云端所有行（兼容单行 main 与分块 meta + outfit_xxx）
+    async function fetchAllFromCloud() {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?select=id,data,updated_at`, {
+        method: "GET",
+        headers: getSupabaseHeaders(),
+        cache: "no-store"
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        if (res.status === 404 || errText.includes("42P01") || errText.includes("ootd_sync")) {
+          throw new Error("Supabase里还没建好 ootd_sync 表，请先去 SQL Editor 运行建表语句");
+        }
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 120)}`);
+      }
+      const rows = await res.json();
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+
+      let categories = [];
+      let items = [];
+      const outfitMap = new Map();
+
+      // 兼容旧版 main 行
+      const mainRow = rows.find(r => r.id === "main");
+      if (mainRow && mainRow.data) {
+        if (Array.isArray(mainRow.data.categories)) categories = mainRow.data.categories;
+        if (Array.isArray(mainRow.data.items)) items = mainRow.data.items;
+        if (Array.isArray(mainRow.data.outfits)) {
+          mainRow.data.outfits.forEach(o => { if (o && o.id) outfitMap.set(o.id, o); });
+        }
+      }
+
+      // 读取分块 meta 行
+      const metaRow = rows.find(r => r.id === "meta");
+      if (metaRow && metaRow.data) {
+        if (Array.isArray(metaRow.data.categories)) categories = metaRow.data.categories;
+        if (Array.isArray(metaRow.data.items)) items = metaRow.data.items;
+      }
+
+      // 读取每一套独立存储的穿搭行
+      rows.forEach(r => {
+        if (r.id && r.id.startsWith("outfit_") && r.data && r.data.id) {
+          outfitMap.set(r.data.id, r.data);
+        }
+      });
+
+      const outfits = Array.from(outfitMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return { categories, items, outfits };
+    }
+
+    // 同步分类与单品信息（仅几KB，瞬间完成）
+    async function syncMetaToCloud() {
+      try {
+        updateCloudBadge("syncing", "同步中...");
+        await upsertCloudRow("meta", {
+          categories: state.categories,
+          items: state.items,
+          updatedAt: Date.now()
+        });
+        updateCloudBadge("ok", "已同步");
+      } catch (err) {
+        console.error(err);
+        setCloudError(err.message);
+        updateCloudBadge("warn", "同步失败");
+      }
+    }
+
+    // 将全量数据逐条上传云端
+    async function pushAllToCloud() {
+      updateCloudBadge("syncing", "同步中...");
+      await upsertCloudRow("meta", {
+        categories: state.categories,
+        items: state.items,
+        updatedAt: Date.now()
+      });
+      for (let i = 0; i < state.outfits.length; i++) {
+        const o = state.outfits[i];
+        updateCloudBadge("syncing", `上传 ${i + 1}/${state.outfits.length}`);
+        await upsertCloudRow(o.id, o);
+      }
       updateCloudBadge("ok", "已同步");
     }
 
@@ -531,10 +609,12 @@
 
     const DEFAULT_CATEGORIES = [
       { id: 'cat_outer', name: '外套' },
+      { id: 'cat_cardigan', name: '开衫' },
+      { id: 'cat_sweater', name: '毛衣' },
       { id: 'cat_inner', name: '内搭' },
       { id: 'cat_pants', name: '裤子' },
       { id: 'cat_shoes', name: '鞋子' },
-      { id: 'cat_bag', name: '包包' }
+      { id: 'cat_bag', name: '包' }
     ];
 
     const DEMO_ITEM_NAMES = new Set([
@@ -615,7 +695,6 @@
       }
     }
 
-    // 清理旧版演示数据与无效温度标签
     function sanitizeDataset(rawData) {
       const categories = Array.isArray(rawData?.categories) && rawData.categories.length
         ? rawData.categories
@@ -656,7 +735,6 @@
       return { categories, items, outfits };
     }
 
-    // 合并两份数据（按 id 去重，防止首次同步覆盖本机已有穿搭）
     function mergeDatasets(cloudClean, localClean) {
       const mapById = (arr) => {
         const m = new Map();
@@ -664,13 +742,22 @@
         return Array.from(m.values());
       };
       return {
-        categories: mapById([...cloudClean.categories, ...localClean.categories]),
+        categories: mapById([...localClean.categories, ...cloudClean.categories]),
         items: mapById([...localClean.items, ...cloudClean.items]),
         outfits: mapById([...localClean.outfits, ...cloudClean.outfits])
       };
     }
 
-    // ==================== 初始化（本地秒开 + 云端双向智能同步） ====================
+    async function saveLocalOnly() {
+      await dbSet('ootd_app_data', {
+        categories: state.categories,
+        items: state.items,
+        outfits: state.outfits,
+        cloudSynced: true
+      });
+    }
+
+    // ==================== 初始化与双向智能同步 ====================
     async function initApp() {
       let savedData = await dbGet('ootd_app_data');
       if (!savedData) {
@@ -689,106 +776,80 @@
       state.outfits = localClean.outfits;
       renderAll();
 
-      // 开始与 Supabase 云端同步
       try {
         updateCloudBadge("syncing", "云同步中");
-        const cloudRow = await fetchFromCloud();
+        const cloudData = await fetchAllFromCloud();
         const hasLocalContent = localClean.outfits.length > 0 || localClean.items.length > 0;
 
-        if (!cloudRow || !cloudRow.data) {
-          // 云端还是空的：如果当前浏览器有数据（如你的 Chrome），自动上传到云端
+        if (!cloudData || (cloudData.outfits.length === 0 && cloudData.items.length === 0)) {
           if (hasLocalContent) {
-            await saveData(true);
-            showToast("☁️ 已将本机穿搭自动备份到云端");
+            await pushAllToCloud();
+            await saveLocalOnly();
+            showToast("☁️ 已将本机穿搭逐套备份到云端");
           } else {
             updateCloudBadge("ok", "云端就绪");
           }
         } else {
-          const cloudClean = sanitizeDataset(cloudRow.data);
-          const hasCloudContent = cloudClean.outfits.length > 0 || cloudClean.items.length > 0;
+          const cloudClean = sanitizeDataset(cloudData);
+          const merged = mergeDatasets(cloudClean, localClean);
+          state.categories = merged.categories;
+          state.items = merged.items;
+          state.outfits = merged.outfits;
+          await saveLocalOnly();
+          renderAll();
 
-          if (!savedData?.cloudSynced && hasLocalContent) {
-            // 本机首次开启云同步且本机有旧数据：合并本机与云端数据并上传，绝不丢失本机照片
-            const merged = mergeDatasets(cloudClean, localClean);
-            state.categories = merged.categories;
-            state.items = merged.items;
-            state.outfits = merged.outfits;
-            await saveData(true);
-            renderAll();
-            showToast("☁️ 本机与云端数据已合并同步");
-          } else if (hasCloudContent) {
-            // 正常从云端拉取最新数据（如在微信收藏里打开）
-            state.categories = cloudClean.categories;
-            state.items = cloudClean.items;
-            state.outfits = cloudClean.outfits;
-            await dbSet('ootd_app_data', {
-              categories: state.categories,
-              items: state.items,
-              outfits: state.outfits,
-              cloudSynced: true
-            });
-            renderAll();
-            updateCloudBadge("ok", "已同步");
-          } else if (hasLocalContent) {
-            await saveData(true);
-          } else {
-            updateCloudBadge("ok", "已同步");
+          // 如果本机有比云端多的新穿搭，自动把差集补传到云端
+          const cloudOutfitIds = new Set(cloudClean.outfits.map(o => o.id));
+          const unsyncedOutfits = state.outfits.filter(o => !cloudOutfitIds.has(o.id));
+          if (unsyncedOutfits.length > 0 || state.items.length > cloudClean.items.length) {
+            await upsertCloudRow("meta", { categories: state.categories, items: state.items });
+            for (const o of unsyncedOutfits) {
+              await upsertCloudRow(o.id, o);
+            }
           }
+          updateCloudBadge("ok", "已同步");
         }
       } catch (err) {
-        console.warn("Cloud sync warning:", err);
-        updateCloudBadge("warn", "本地模式");
-      }
-    }
-
-    async function saveData(syncCloud = true) {
-      await dbSet('ootd_app_data', {
-        categories: state.categories,
-        items: state.items,
-        outfits: state.outfits,
-        cloudSynced: true
-      });
-      if (syncCloud) {
-        try {
-          await pushToCloud();
-        } catch (err) {
-          console.error(err);
-          updateCloudBadge("warn", "同步失败");
-          showToast("已存本机，云端同步失败请检查网络");
-        }
+        console.warn("Cloud init error:", err);
+        setCloudError(err.message);
+        updateCloudBadge("warn", "同步失败");
       }
     }
 
     async function manualPushToCloud() {
       try {
-        await saveData(true);
+        await saveLocalOnly();
+        await pushAllToCloud();
         closeBackupModal();
-        showToast("☁️ 已成功上传到云端！");
-      } catch {
-        showToast("上传失败，请检查数据表是否已创建");
+        showToast("☁️ 全部穿搭已成功上传到云端！");
+      } catch (err) {
+        setCloudError(err.message);
+        updateCloudBadge("warn", "同步失败");
+        showToast("上传失败，请看弹窗内的诊断提示");
       }
     }
 
     async function manualPullFromCloud() {
       try {
         updateCloudBadge("syncing", "拉取中...");
-        const cloudRow = await fetchFromCloud();
-        if (!cloudRow || !cloudRow.data) {
+        const cloudData = await fetchAllFromCloud();
+        if (!cloudData || (cloudData.outfits.length === 0 && cloudData.items.length === 0)) {
           updateCloudBadge("ok", "云端为空");
           return showToast("云端还没有数据哦");
         }
-        const cloudClean = sanitizeDataset(cloudRow.data);
+        const cloudClean = sanitizeDataset(cloudData);
         state.categories = cloudClean.categories;
         state.items = cloudClean.items;
         state.outfits = cloudClean.outfits;
-        await saveData(false);
+        await saveLocalOnly();
         updateCloudBadge("ok", "已同步");
         closeBackupModal();
         renderAll();
         showToast("☁️ 已从云端拉取最新穿搭！");
-      } catch {
+      } catch (err) {
+        setCloudError(err.message);
         updateCloudBadge("warn", "拉取失败");
-        showToast("从云端拉取失败，请稍后重试");
+        showToast("拉取失败，请看弹窗内的诊断提示");
       }
     }
 
@@ -1145,7 +1206,6 @@
       }).join('');
     }
 
-    // ==================== 底部 Tab 切换 ====================
     function switchTab(tab) {
       const matchSec = document.getElementById('tab-match');
       const closetSec = document.getElementById('tab-closet');
@@ -1334,9 +1394,10 @@
       modalItemSelection.push(newItem.id);
       nameInput.value = '';
       document.getElementById('quick-add-item-box').classList.add('hidden');
-      await saveData();
+      await saveLocalOnly();
       renderModalItemSelector();
       renderAll();
+      await syncMetaToCloud();
       showToast('已添加并勾选：' + name);
     }
 
@@ -1348,7 +1409,7 @@
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxDim = 1080;
+          const maxDim = 900;
           let w = img.width;
           let h = img.height;
           if (w > h && w > maxDim) {
@@ -1362,7 +1423,7 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          modalImageBase64 = canvas.toDataURL('image/jpeg', 0.80);
+          modalImageBase64 = canvas.toDataURL('image/jpeg', 0.76);
 
           const previewImg = document.getElementById('outfit-preview-img');
           previewImg.src = modalImageBase64;
@@ -1382,44 +1443,69 @@
 
       const note = document.getElementById('outfit-note-input').value.trim();
       const validTemps = modalTempSelection.filter(t => VALID_TEMP_IDS.has(t));
+      let savedOutfit = null;
 
       if (editingOutfitId) {
         const idx = state.outfits.findIndex(o => o.id === editingOutfitId);
         if (idx > -1) {
-          state.outfits[idx] = {
+          savedOutfit = {
             ...state.outfits[idx],
             image: modalImageBase64,
             temps: validTemps,
             itemIds: [...modalItemSelection],
             note
           };
+          state.outfits[idx] = savedOutfit;
         }
-        showToast('穿搭已更新并同步云端');
       } else {
-        state.outfits.unshift({
+        savedOutfit = {
           id: 'outfit_' + Date.now(),
           image: modalImageBase64,
           temps: validTemps,
           itemIds: [...modalItemSelection],
           note,
           createdAt: Date.now()
-        });
-        showToast('新穿搭已保存并同步云端');
+        };
+        state.outfits.unshift(savedOutfit);
       }
 
       closeOutfitModal();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+
+      if (savedOutfit) {
+        try {
+          updateCloudBadge("syncing", "同步中...");
+          await upsertCloudRow("meta", { categories: state.categories, items: state.items });
+          await upsertCloudRow(savedOutfit.id, savedOutfit);
+          updateCloudBadge("ok", "已同步");
+          showToast('已保存并同步到云端');
+        } catch (err) {
+          console.error(err);
+          setCloudError(err.message);
+          updateCloudBadge("warn", "同步失败");
+          showToast('已存本机，点右上角查看云同步原因');
+        }
+      }
     }
 
     async function handleDeleteOutfit() {
       if (!editingOutfitId) return;
       if (!confirm('确定要删除这套穿搭吗？')) return;
-      state.outfits = state.outfits.filter(o => o.id !== editingOutfitId);
+      const targetId = editingOutfitId;
+      state.outfits = state.outfits.filter(o => o.id !== targetId);
       closeOutfitModal();
       renderAll();
-      await saveData();
-      showToast('已删除穿搭');
+      await saveLocalOnly();
+      try {
+        updateCloudBadge("syncing", "同步中...");
+        await deleteCloudRow(targetId);
+        updateCloudBadge("ok", "已同步");
+        showToast('已删除穿搭');
+      } catch (err) {
+        setCloudError(err.message);
+        updateCloudBadge("warn", "同步失败");
+      }
     }
 
     // ==================== 自定义分类管理 ====================
@@ -1471,7 +1557,8 @@
       input.value = '';
       renderCategoryManageList();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
       showToast('已添加分类：' + name);
     }
 
@@ -1483,7 +1570,8 @@
       state.categories[target] = temp;
       renderCategoryManageList();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
     }
 
     async function renameCategory(catId) {
@@ -1494,7 +1582,8 @@
       cat.name = newName.trim();
       renderCategoryManageList();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
     }
 
     async function deleteCategory(catId) {
@@ -1513,7 +1602,8 @@
 
       renderCategoryManageList();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
     }
 
     // ==================== 新建 / 编辑单品弹窗 ====================
@@ -1567,7 +1657,8 @@
 
       closeItemModal();
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
     }
 
     async function handleDeleteItem(itemId) {
@@ -1582,7 +1673,8 @@
       });
 
       renderAll();
-      await saveData();
+      await saveLocalOnly();
+      await syncMetaToCloud();
       showToast('已删除单品');
     }
 
@@ -1628,7 +1720,8 @@
           state.outfits = cleaned.outfits;
           closeBackupModal();
           renderAll();
-          await saveData(true);
+          await saveLocalOnly();
+          await pushAllToCloud();
           showToast('数据已恢复并同步到云端');
         } catch {
           showToast('备份文件解析失败');
