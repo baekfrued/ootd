@@ -394,7 +394,6 @@
           </p>
         </div>
 
-        <!-- 错误诊断框 -->
         <div id="cloud-error-box" class="hidden p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 leading-relaxed break-all"></div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -436,7 +435,7 @@
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-full bg-slate-900/90 text-white text-xs font-medium shadow-lg backdrop-blur-xs"></div>
 
   <script>
-    // ==================== SUPABASE 云端配置 ====================
+    // ==================== SUPABASE 云端配置（已更正 URL） ====================
     const SUPABASE_URL = "https://tzryhgfguriokuboujfx.supabase.co";
     const SUPABASE_KEY = "sb_publishable_6L1TvbqBJKEXRYMEuuQwgA_BvP7BEOK".trim();
     let lastCloudError = "";
@@ -481,7 +480,6 @@
       }
     }
 
-    // 单行上传（分块同步，避免多图打包超时）
     async function upsertCloudRow(rowId, payloadData) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?on_conflict=id`, {
         method: "POST",
@@ -498,7 +496,7 @@
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         if (res.status === 404 || errText.includes("42P01") || errText.includes("ootd_sync")) {
-          throw new Error("Supabase里还没建好 ootd_sync 表，请先去 SQL Editor 运行建表语句 (状态码 " + res.status + ")");
+          throw new Error("Supabase里还没建好 ootd_sync 表，请先去 SQL Editor 运行建表语句");
         }
         throw new Error(`HTTP ${res.status}: ${errText.slice(0, 120)}`);
       }
@@ -511,7 +509,6 @@
       });
     }
 
-    // 拉取云端所有行（兼容单行 main 与分块 meta + outfit_xxx）
     async function fetchAllFromCloud() {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/ootd_sync?select=id,data,updated_at`, {
         method: "GET",
@@ -532,7 +529,6 @@
       let items = [];
       const outfitMap = new Map();
 
-      // 兼容旧版 main 行
       const mainRow = rows.find(r => r.id === "main");
       if (mainRow && mainRow.data) {
         if (Array.isArray(mainRow.data.categories)) categories = mainRow.data.categories;
@@ -542,14 +538,12 @@
         }
       }
 
-      // 读取分块 meta 行
       const metaRow = rows.find(r => r.id === "meta");
       if (metaRow && metaRow.data) {
         if (Array.isArray(metaRow.data.categories)) categories = metaRow.data.categories;
         if (Array.isArray(metaRow.data.items)) items = metaRow.data.items;
       }
 
-      // 读取每一套独立存储的穿搭行
       rows.forEach(r => {
         if (r.id && r.id.startsWith("outfit_") && r.data && r.data.id) {
           outfitMap.set(r.data.id, r.data);
@@ -560,7 +554,6 @@
       return { categories, items, outfits };
     }
 
-    // 同步分类与单品信息（仅几KB，瞬间完成）
     async function syncMetaToCloud() {
       try {
         updateCloudBadge("syncing", "同步中...");
@@ -577,7 +570,6 @@
       }
     }
 
-    // 将全量数据逐条上传云端
     async function pushAllToCloud() {
       updateCloudBadge("syncing", "同步中...");
       await upsertCloudRow("meta", {
@@ -757,7 +749,6 @@
       });
     }
 
-    // ==================== 初始化与双向智能同步 ====================
     async function initApp() {
       let savedData = await dbGet('ootd_app_data');
       if (!savedData) {
@@ -798,7 +789,6 @@
           await saveLocalOnly();
           renderAll();
 
-          // 如果本机有比云端多的新穿搭，自动把差集补传到云端
           const cloudOutfitIds = new Set(cloudClean.outfits.map(o => o.id));
           const unsyncedOutfits = state.outfits.filter(o => !cloudOutfitIds.has(o.id));
           if (unsyncedOutfits.length > 0 || state.items.length > cloudClean.items.length) {
@@ -861,7 +851,6 @@
       window.__toastTimer = setTimeout(() => t.classList.add('hidden'), 2200);
     }
 
-    // ==================== 渲染主界面 ====================
     function renderAll() {
       renderTempFilter();
       renderMatchCategoryTabs();
@@ -1118,7 +1107,6 @@
       }).join('');
     }
 
-    // ==================== 我的衣橱页面 ====================
     function renderClosetCategoryTabs() {
       const container = document.getElementById('closet-category-tabs');
       const allTab = [{ id: 'all', name: '全部' }, ...state.categories];
@@ -1226,7 +1214,6 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // ==================== 上传 / 编辑穿搭弹窗 ====================
     function openOutfitModal(outfitId = null, preselectedItemIds = null) {
       editingOutfitId = outfitId;
       const modal = document.getElementById('outfit-modal');
@@ -1508,7 +1495,6 @@
       }
     }
 
-    // ==================== 自定义分类管理 ====================
     function openCategoryModal() {
       renderCategoryManageList();
       document.getElementById('category-modal').classList.remove('hidden');
@@ -1606,7 +1592,6 @@
       await syncMetaToCloud();
     }
 
-    // ==================== 新建 / 编辑单品弹窗 ====================
     function openItemModal(itemId = null) {
       editingItemId = itemId;
       const modal = document.getElementById('item-modal');
@@ -1678,7 +1663,6 @@
       showToast('已删除单品');
     }
 
-    // ==================== 备份与恢复 ====================
     function openBackupModal() {
       document.getElementById('backup-modal').classList.remove('hidden');
     }
