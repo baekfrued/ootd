@@ -87,6 +87,7 @@
           </button>
         </div>
 
+        <!-- 模糊搜索框 -->
         <div class="relative mb-3">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
           <input
@@ -105,8 +106,10 @@
           </button>
         </div>
 
+        <!-- 分类横向切换 -->
         <div id="match-category-tabs" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-2.5 border-b border-slate-100"></div>
 
+        <!-- 已选单品提示栏 -->
         <div id="selected-items-bar" class="hidden mt-2.5 p-2 bg-indigo-50/70 rounded-xl border border-indigo-100/80">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-[11px] font-medium text-indigo-700">已选单品：</span>
@@ -115,6 +118,7 @@
           <div id="selected-items-chips" class="flex flex-wrap gap-1.5"></div>
         </div>
 
+        <!-- 单品选择列表 -->
         <div id="match-items-container" class="mt-3 flex flex-wrap gap-2 max-h-56 overflow-y-auto pt-0.5"></div>
       </div>
 
@@ -462,7 +466,7 @@
     let modalImageBase64 = '';
     let editingItemId = null;
 
-    // ==================== 本地数据库（含自动数据迁移防丢失） ====================
+    // ==================== IndexedDB 本地数据库封装 ====================
     const DB_NAME = 'OOTD_Closet_DB_V3';
     const DB_VERSION = 1;
     let dbInstance = null;
@@ -616,7 +620,7 @@
     function renderTempFilter() {
       const container = document.getElementById('temp-filter-list');
       const currentObj = TEMP_OPTIONS.find(t => t.id === state.selectedTemp) || TEMP_OPTIONS[0];
-      document.getElementById('current-temp-label').textContent = `${currentObj.icon}${currentObj.label}`;
+      document.getElementById('current-temp-label').textContent = `${currentObj.icon} ${currentObj.label}`;
 
       container.innerHTML = TEMP_OPTIONS.map(t => {
         const active = state.selectedTemp === t.id;
@@ -931,4 +935,524 @@
             <div class="flex items-center gap-1.5">
               <button
                 onclick="openOutfitModalForItem('${item.id}')"
-                class="px-2.
+                class="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-bold"
+              >
+                +加穿搭
+              </button>
+              <button
+                onclick="openItemModal('${item.id}')"
+                class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs flex items-center justify-center"
+              >
+                <i class="fa-solid fa-pen text-[10px]"></i>
+              </button>
+              <button
+                onclick="handleDeleteItem('${item.id}')"
+                class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-rose-500 text-xs flex items-center justify-center"
+              >
+                <i class="fa-solid fa-trash text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchTab(tab) {
+      const matchSec = document.getElementById('tab-match');
+      const closetSec = document.getElementById('tab-closet');
+      const navMatch = document.getElementById('nav-match');
+      const navCloset = document.getElementById('nav-closet');
+
+      if (tab === 'match') {
+        matchSec.classList.remove('hidden');
+        closetSec.classList.add('hidden');
+        navMatch.className = 'flex flex-col items-center justify-center gap-1 text-indigo-600';
+        navCloset.className = 'flex flex-col items-center justify-center gap-1 text-slate-400';
+      } else {
+        matchSec.classList.add('hidden');
+        closetSec.classList.remove('hidden');
+        navMatch.className = 'flex flex-col items-center justify-center gap-1 text-slate-400';
+        navCloset.className = 'flex flex-col items-center justify-center gap-1 text-indigo-600';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openOutfitModal(outfitId = null, preselectedItemIds = null) {
+      editingOutfitId = outfitId;
+      const modal = document.getElementById('outfit-modal');
+      const titleEl = document.getElementById('outfit-modal-title');
+      const delBtn = document.getElementById('delete-outfit-btn');
+      const previewImg = document.getElementById('outfit-preview-img');
+      const placeholder = document.getElementById('outfit-upload-placeholder');
+      const reuploadBtn = document.getElementById('outfit-reupload-btn');
+      const noteInput = document.getElementById('outfit-note-input');
+      document.getElementById('modal-item-search').value = '';
+      document.getElementById('quick-add-item-box').classList.add('hidden');
+
+      if (outfitId) {
+        const outfit = state.outfits.find(o => o.id === outfitId);
+        if (!outfit) return;
+        titleEl.textContent = '编辑 / 查看穿搭';
+        delBtn.classList.remove('hidden');
+        modalImageBase64 = outfit.image;
+        const rawTemps = Array.isArray(outfit.temps) ? outfit.temps : (outfit.temp ? [outfit.temp] : []);
+        modalTempSelection = rawTemps.filter(t => VALID_TEMP_IDS.has(t));
+        modalItemSelection = Array.isArray(outfit.itemIds) ? [...outfit.itemIds] : [];
+        noteInput.value = outfit.note || '';
+
+        previewImg.src = modalImageBase64;
+        previewImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        reuploadBtn.classList.remove('hidden');
+      } else {
+        titleEl.textContent = '上传新穿搭';
+        delBtn.classList.add('hidden');
+        modalImageBase64 = '';
+        modalTempSelection = (state.selectedTemp !== 'all' && VALID_TEMP_IDS.has(state.selectedTemp))
+          ? [state.selectedTemp]
+          : [];
+        modalItemSelection = preselectedItemIds ? [...preselectedItemIds] : [...state.selectedItemIds];
+        noteInput.value = '';
+
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        reuploadBtn.classList.add('hidden');
+      }
+
+      renderModalTempOptions();
+      renderModalItemSelector();
+      modal.classList.remove('hidden');
+    }
+
+    function openOutfitModalWithSelected() {
+      openOutfitModal(null, state.selectedItemIds);
+    }
+
+    function openOutfitModalForItem(itemId) {
+      openOutfitModal(null, [itemId]);
+    }
+
+    function closeOutfitModal() {
+      document.getElementById('outfit-modal').classList.add('hidden');
+    }
+
+    function renderModalTempOptions() {
+      const container = document.getElementById('modal-temp-options');
+      const validTemps = TEMP_OPTIONS.filter(t => t.id !== 'all');
+      container.innerHTML = validTemps.map(t => {
+        const active = modalTempSelection.includes(t.id);
+        return `
+          <button
+            type="button"
+            onclick="toggleModalTemp('${t.id}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+              active
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-slate-50 text-slate-600 border-slate-200'
+            }"
+          >
+            ${t.icon} ${t.label}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleModalTemp(tempId) {
+      const idx = modalTempSelection.indexOf(tempId);
+      if (idx > -1) {
+        modalTempSelection.splice(idx, 1);
+      } else {
+        modalTempSelection.push(tempId);
+      }
+      renderModalTempOptions();
+    }
+
+    function renderModalItemSelector() {
+      const container = document.getElementById('modal-items-selector');
+      const q = document.getElementById('modal-item-search').value.trim().toLowerCase();
+
+      if (state.items.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">衣橱里还没有单品，请点击上方「新建衣服单品」添加</div>`;
+        return;
+      }
+
+      const htmlParts = [];
+      state.categories.forEach(cat => {
+        const catItems = state.items.filter(i => i.categoryId === cat.id && (!q || i.name.toLowerCase().includes(q)));
+        if (catItems.length === 0) return;
+        htmlParts.push(`
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 mb-1.5">${escapeHtml(cat.name)}</div>
+            <div class="flex flex-wrap gap-1.5">
+              ${catItems.map(item => {
+                const checked = modalItemSelection.includes(item.id);
+                return `
+                  <button
+                    type="button"
+                    onclick="toggleModalItem('${item.id}')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
+                      checked
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                    }"
+                  >
+                    ${escapeHtml(item.name)}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `);
+      });
+
+      container.innerHTML = htmlParts.length ? htmlParts.join('') : `<div class="text-xs text-slate-400 py-2 text-center">无匹配单品</div>`;
+    }
+
+    function toggleModalItem(itemId) {
+      const idx = modalItemSelection.indexOf(itemId);
+      if (idx > -1) {
+        modalItemSelection.splice(idx, 1);
+      } else {
+        modalItemSelection.push(itemId);
+      }
+      renderModalItemSelector();
+    }
+
+    function toggleQuickAddItem() {
+      const box = document.getElementById('quick-add-item-box');
+      const select = document.getElementById('quick-item-cat');
+      select.innerHTML = state.categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        document.getElementById('quick-item-name').focus();
+      }
+    }
+
+    async function saveQuickAddItem() {
+      const catId = document.getElementById('quick-item-cat').value;
+      const nameInput = document.getElementById('quick-item-name');
+      const name = nameInput.value.trim();
+      if (!name) return showToast('请输入单品名称');
+
+      const newItem = {
+        id: 'item_' + Date.now(),
+        name,
+        categoryId: catId
+      };
+      state.items.unshift(newItem);
+      modalItemSelection.push(newItem.id);
+      nameInput.value = '';
+      document.getElementById('quick-add-item-box').classList.add('hidden');
+      await saveData();
+      renderModalItemSelector();
+      renderAll();
+      showToast('已添加并勾选：' + name);
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1080;
+          let w = img.width;
+          let h = img.height;
+          if (w > h && w > maxDim) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else if (h > maxDim) {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          modalImageBase64 = canvas.toDataURL('image/jpeg', 0.82);
+
+          const previewImg = document.getElementById('outfit-preview-img');
+          previewImg.src = modalImageBase64;
+          previewImg.classList.remove('hidden');
+          document.getElementById('outfit-upload-placeholder').classList.add('hidden');
+          document.getElementById('outfit-reupload-btn').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function handleSaveOutfit() {
+      if (!modalImageBase64) return showToast('请先上传一张穿搭照片');
+      if (modalTempSelection.length === 0) return showToast('请至少选择一个适合的温度');
+      if (modalItemSelection.length === 0) return showToast('请至少勾选一件关联的衣服单品');
+
+      const note = document.getElementById('outfit-note-input').value.trim();
+      const validTemps = modalTempSelection.filter(t => VALID_TEMP_IDS.has(t));
+
+      if (editingOutfitId) {
+        const idx = state.outfits.findIndex(o => o.id === editingOutfitId);
+        if (idx > -1) {
+          state.outfits[idx] = {
+            ...state.outfits[idx],
+            image: modalImageBase64,
+            temps: validTemps,
+            itemIds: [...modalItemSelection],
+            note
+          };
+        }
+        showToast('穿搭已更新');
+      } else {
+        state.outfits.unshift({
+          id: 'outfit_' + Date.now(),
+          image: modalImageBase64,
+          temps: validTemps,
+          itemIds: [...modalItemSelection],
+          note,
+          createdAt: Date.now()
+        });
+        showToast('新穿搭已保存');
+      }
+
+      await saveData();
+      closeOutfitModal();
+      renderAll();
+    }
+
+    async function handleDeleteOutfit() {
+      if (!editingOutfitId) return;
+      if (!confirm('确定要删除这套穿搭吗？')) return;
+      state.outfits = state.outfits.filter(o => o.id !== editingOutfitId);
+      await saveData();
+      closeOutfitModal();
+      renderAll();
+      showToast('已删除穿搭');
+    }
+
+    function openCategoryModal() {
+      renderCategoryManageList();
+      document.getElementById('category-modal').classList.remove('hidden');
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('category-modal').classList.add('hidden');
+    }
+
+    function renderCategoryManageList() {
+      const container = document.getElementById('category-manage-list');
+      container.innerHTML = state.categories.map((cat, idx) => {
+        const count = state.items.filter(i => i.categoryId === cat.id).length;
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-800">${escapeHtml(cat.name)}</span>
+              <span class="text-[11px] text-slate-400">(${count}件)</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 text-xs">
+                <i class="fa-solid fa-arrow-up text-[10px]"></i>
+              </button>
+              <button onclick="moveCategory(${idx}, 1)" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 text-xs">
+                <i class="fa-solid fa-arrow-down text-[10px]"></i>
+              </button>
+              <button onclick="renameCategory('${cat.id}')" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs">
+                <i class="fa-solid fa-pen text-[10px]"></i>
+              </button>
+              <button onclick="deleteCategory('${cat.id}')" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-rose-500 text-xs">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function handleAddCategory() {
+      const input = document.getElementById('new-category-input');
+      const name = input.value.trim();
+      if (!name) return showToast('请输入分类名称');
+      if (state.categories.some(c => c.name === name)) return showToast('该分类已存在');
+
+      state.categories.push({ id: 'cat_' + Date.now(), name });
+      input.value = '';
+      await saveData();
+      renderCategoryManageList();
+      renderAll();
+      showToast('已添加分类：' + name);
+    }
+
+    async function moveCategory(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= state.categories.length) return;
+      const temp = state.categories[idx];
+      state.categories[idx] = state.categories[target];
+      state.categories[target] = temp;
+      await saveData();
+      renderCategoryManageList();
+      renderAll();
+    }
+
+    async function renameCategory(catId) {
+      const cat = state.categories.find(c => c.id === catId);
+      if (!cat) return;
+      const newName = prompt('修改分类名称：', cat.name);
+      if (!newName || !newName.trim()) return;
+      cat.name = newName.trim();
+      await saveData();
+      renderCategoryManageList();
+      renderAll();
+    }
+
+    async function deleteCategory(catId) {
+      if (state.categories.length <= 1) return showToast('至少保留一个分类');
+      const count = state.items.filter(i => i.categoryId === catId).length;
+      if (count > 0 && !confirm(`该分类下有 ${count} 件单品，删除分类后这些单品将移入第一个分类，确定继续吗？`)) return;
+
+      const remainCats = state.categories.filter(c => c.id !== catId);
+      const fallbackCatId = remainCats[0].id;
+      state.items.forEach(i => {
+        if (i.categoryId === catId) i.categoryId = fallbackCatId;
+      });
+      state.categories = remainCats;
+      if (state.selectedCategory === catId) state.selectedCategory = 'all';
+      if (state.closetCategory === catId) state.closetCategory = 'all';
+
+      await saveData();
+      renderCategoryManageList();
+      renderAll();
+    }
+
+    function openItemModal(itemId = null) {
+      editingItemId = itemId;
+      const modal = document.getElementById('item-modal');
+      const title = document.getElementById('item-modal-title');
+      const select = document.getElementById('item-modal-cat');
+      const nameInput = document.getElementById('item-modal-name');
+
+      select.innerHTML = state.categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+      if (itemId) {
+        const item = state.items.find(i => i.id === itemId);
+        if (!item) return;
+        title.textContent = '修改单品';
+        select.value = item.categoryId;
+        nameInput.value = item.name;
+      } else {
+        title.textContent = '新建衣服单品';
+        select.value = state.closetCategory !== 'all' ? state.closetCategory : state.categories[0].id;
+        nameInput.value = '';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeItemModal() {
+      document.getElementById('item-modal').classList.add('hidden');
+    }
+
+    async function handleSaveItemModal() {
+      const catId = document.getElementById('item-modal-cat').value;
+      const name = document.getElementById('item-modal-name').value.trim();
+      if (!name) return showToast('请输入单品名称');
+
+      if (editingItemId) {
+        const item = state.items.find(i => i.id === editingItemId);
+        if (item) {
+          item.categoryId = catId;
+          item.name = name;
+        }
+        showToast('单品已更新');
+      } else {
+        state.items.unshift({
+          id: 'item_' + Date.now(),
+          name,
+          categoryId: catId
+        });
+        showToast('已添加单品：' + name);
+      }
+
+      await saveData();
+      closeItemModal();
+      renderAll();
+    }
+
+    async function handleDeleteItem(itemId) {
+      const item = state.items.find(i => i.id === itemId);
+      if (!item) return;
+      if (!confirm(`确定要删除单品「${item.name}」吗？`)) return;
+
+      state.items = state.items.filter(i => i.id !== itemId);
+      state.selectedItemIds = state.selectedItemIds.filter(id => id !== itemId);
+      state.outfits.forEach(o => {
+        o.itemIds = (o.itemIds || []).filter(id => id !== itemId);
+      });
+
+      await saveData();
+      renderAll();
+      showToast('已删除单品');
+    }
+
+    function openBackupModal() {
+      document.getElementById('backup-modal').classList.remove('hidden');
+    }
+
+    function closeBackupModal() {
+      document.getElementById('backup-modal').classList.add('hidden');
+    }
+
+    function exportBackupData() {
+      const dataStr = JSON.stringify({
+        categories: state.categories,
+        items: state.items,
+        outfits: state.outfits,
+        exportedAt: new Date().toISOString()
+      });
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ootd223_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('已导出备份文件');
+    }
+
+    function importBackupData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.categories || !parsed.items || !parsed.outfits) {
+            return showToast('备份文件格式不正确');
+          }
+          const cleaned = sanitizeDataset(parsed);
+          state.categories = cleaned.categories;
+          state.items = cleaned.items;
+          state.outfits = cleaned.outfits;
+          await saveData();
+          closeBackupModal();
+          renderAll();
+          showToast('数据已成功恢复');
+        } catch {
+          showToast('备份文件解析失败');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
